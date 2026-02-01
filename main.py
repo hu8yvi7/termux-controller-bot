@@ -258,7 +258,7 @@ def nano_cmd(m):
     edit_sessions[sid] = path
     
     # Create web interface URL
-    link = f"https://elite-vps-bot-try-hu7.onrender.com/edit/{sid}"
+    link = f"https://rocky-termux-com.onrender.com/edit/{sid}"
     
     # Send edit options
     markup = types.InlineKeyboardMarkup()
