@@ -255,7 +255,7 @@ def stop_cmd(m):
         bot.send_message(cid, "✅ Process stopped successfully!")
     else:
         bot.send_message(cid, "⚠️ No running process to stop.")
-
+        
 @bot.message_handler(commands=["nano"])
 def nano_cmd(m):
     cid = m.chat.id
@@ -278,8 +278,8 @@ def nano_cmd(m):
     sid = str(uuid.uuid4())
     edit_sessions[sid] = {"file": path, "admin_id": cid}
 
-    RENDER_DOMAIN = os.environ.get("RENDER_DOMAIN", "tuitui_tui_termux_bot6.onrender.com")
-link = f"https://{RENDER_DOMAIN}/edit/{sid}?admin_id={cid}"
+    # Direct link using Render domain
+    link = f"https://elite-vps-bot-try-hu7.onrender.com/edit/{sid}?admin_id={cid}"
 
     markup = types.InlineKeyboardMarkup()
     markup.add(
@@ -288,11 +288,11 @@ link = f"https://{RENDER_DOMAIN}/edit/{sid}?admin_id={cid}"
     )
 
     bot.send_message(
-        cid,
-        f"📝 *EDIT FILE*\n\n*File:* `{filename}`\n*Path:* `{path}`",
-        parse_mode="Markdown",
-        reply_markup=markup
-    )
+    cid,
+    f"📝 *EDIT FILE*\n\n*File:* `{filename}`\n*Path:* `{path}`",
+    parse_mode="Markdown",
+    reply_markup=markup
+)
 
 @bot.message_handler(func=lambda m: True)
 def shell(m):
@@ -838,7 +838,7 @@ def home():
             Server is listening for remote commands via Telegram encrypted tunnel.
         </p>
 
-        <a href="https://t.me/Tuitui_tui_bot" class="btn-telegram">
+        <a href="https://t.me/Reac4ron_bot_bot" class="btn-telegram">
             <i class="fab fa-telegram-plane"></i> OPEN TELEGRAM BOT
         </a>
     </div>
