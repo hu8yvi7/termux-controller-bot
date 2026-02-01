@@ -13,25 +13,35 @@ from flask import Flask, request, render_template_string
 import telebot
 from telebot import types
 
-# Configuration
+# ===================== CONFIGURATION =====================
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-MAIN_ADMIN_ID = int(os.environ.get("MAIN_ADMIN_ID")) # Main admin who can add/remove other admins
+MAIN_ADMIN_ID = int(os.environ.get("MAIN_ADMIN_ID"))  # Main admin who can add/remove other admins
 BASE_DIR = os.getcwd()
 PORT = int(os.environ.get("PORT", 9090))
 DATA_FILE = "bot_data.json"
 
-# Initialize
+# ===================== INITIALIZE BOT =====================
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
-# Data storage
-edit_sessions = {}
-processes = {}        # chat_id -> (pid, fd, start_time, cmd)
-input_wait = {}       # chat_id -> fd
-admins = set()        # Set of admin IDs
-active_sessions = {}  # chat_id -> last_activity
+# ===================== ADMIN-WISE DATA =====================
+edit_sessions = {}       # admin_id -> {sid -> file}
+processes = {}           # admin_id -> {chat_id -> (pid, fd, start_time, cmd)}
+input_wait = {}          # admin_id -> {chat_id -> fd}
+active_sessions = {}     # admin_id -> {chat_id -> last_activity}
+admins = set()           # Set of admin IDs (ye same rahega)
 
-# Load saved data
+# ===================== HELPER =====================
+def get_admin_dict(admin_id, dict_obj):
+    """
+    Returns the dictionary for a specific admin.
+    If it doesn't exist, initialize it.
+    """
+    if admin_id not in dict_obj:
+        dict_obj[admin_id] = {}
+    return dict_obj[admin_id]
+
+# ===================== LOAD / SAVE DATA =====================
 def load_data():
     global admins
     try:
@@ -39,8 +49,9 @@ def load_data():
             with open(DATA_FILE, 'r') as f:
                 data = json.load(f)
                 admins = set(data.get('admins', []))
-                admins.add(MAIN_ADMIN_ID)  # Ensure main admin is always in list
-    except:
+        admins.add(MAIN_ADMIN_ID)  # Ensure main admin is always included
+    except Exception as e:
+        print(f"⚠️ Load data failed: {e}")
         admins = {MAIN_ADMIN_ID}
 
 def save_data():
@@ -48,53 +59,62 @@ def save_data():
         data = {'admins': list(admins)}
         with open(DATA_FILE, 'w') as f:
             json.dump(data, f)
-    except:
-        pass
+    except Exception as e:
+        print(f"⚠️ Save data failed: {e}")
 
+# ===================== INITIAL LOAD =====================
 load_data()
 
 # ================= ENHANCED PTY RUNNER =================
 
-def run_cmd(cmd, chat_id):
+def run_cmd(cmd, admin_id, chat_id):
     def task():
+        # Ensure admin dict exists
+        proc_dict = get_admin_dict(admin_id, processes)
+        sess_dict = get_admin_dict(admin_id, active_sessions)
+        input_dict = get_admin_dict(admin_id, input_wait)
+        
         pid, fd = pty.fork()
         if pid == 0:
+            # Child process
             os.chdir(BASE_DIR)
             os.execvp("bash", ["bash", "-c", cmd])
         else:
+            # Parent process
             start_time = datetime.now().strftime("%H:%M:%S")
-            processes[chat_id] = (pid, fd, start_time, cmd)
-            active_sessions[chat_id] = time.time()
-            
-            while True:
-                r, _, _ = select.select([fd], [], [], 0.1)
-                if fd in r:
+            proc_dict[chat_id] = (pid, fd, start_time, cmd)
+            sess_dict[chat_id] = time.time()
+
+            try:
+                while True:
+                    rlist, _, _ = select.select([fd], [], [], 0.1)
+                    if fd in rlist:
+                        try:
+                            out = os.read(fd, 1024).decode(errors="ignore")
+                        except OSError:
+                            break
+
+                        if out:
+                            display_out = out if len(out) < 2000 else out[:2000] + "\n... [OUTPUT TRUNCATED]"
+                            bot.send_message(chat_id, f"```\n{display_out}\n```", parse_mode="Markdown")
+
+                        # Check if process is waiting for input
+                        if out.strip().endswith(":"):
+                            input_dict[chat_id] = fd
+
+                    # Check if process is still alive
                     try:
-                        out = os.read(fd, 1024).decode(errors="ignore")
+                        os.kill(pid, 0)
                     except OSError:
                         break
-                    
-                    if out:
-                        # Truncate long output
-                        display_out = out if len(out) < 2000 else out[:2000] + "\n... [OUTPUT TRUNCATED]"
-                        bot.send_message(chat_id, f"```\n{display_out}\n```", parse_mode="Markdown")
-                    
-                    # Check if waiting for input
-                    if out.strip().endswith(":"):
-                        input_wait[chat_id] = fd
-                
-                # Check if process is still alive
-                try:
-                    os.kill(pid, 0)
-                except OSError:
-                    break
-                    
-                time.sleep(0.1)
-            
-            # Cleanup after process ends
-            if chat_id in processes:
-                del processes[chat_id]
-    
+
+                    time.sleep(0.1)
+            finally:
+                # Cleanup after process ends
+                proc_dict.pop(chat_id, None)
+                input_dict.pop(chat_id, None)
+                sess_dict.pop(chat_id, None)
+
     threading.Thread(target=task, daemon=True).start()
 
 # ================= ADMIN MANAGEMENT =================
@@ -166,12 +186,11 @@ def start(m):
 @bot.message_handler(commands=["admin"])
 def admin_panel(m):
     cid = m.chat.id
-    
     if str(cid) != str(MAIN_ADMIN_ID):
-        bot.send_message(cid, "𝗢𝗻𝗹𝘆 𝗠𝗮𝗶𝗻 𝗔𝗱𝗺𝗶𝗻 𝗰𝗮𝗻 𝗮𝗰𝗰𝗲𝘀𝘀 𝘁𝗵𝗶𝘀 𝗽𝗮𝗻𝗲𝗹🕵️‍♀️")
+        bot.send_message(cid, "❌ Only main admin can access this panel.")
         return
     
-    bot.send_message(cid, "🔐 𝗔𝗗𝗠𝗜𝗡 𝗣𝗔𝗡𝗘𝗟*", 
+    bot.send_message(cid, "🔐 *ADMIN PANEL*", 
                      parse_mode="Markdown", 
                      reply_markup=admin_keyboard())
 
@@ -179,6 +198,7 @@ def admin_panel(m):
 def status_cmd(m):
     cid = m.chat.id
     if not is_admin(cid):
+        bot.send_message(cid, "❌ Not authorized!")
         return
     
     status_msg = f"""
@@ -194,19 +214,18 @@ def status_cmd(m):
 📌 𝗥𝘂𝗻𝗻𝗶𝗻𝗴 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗲𝘀:
 """
     
-    for chat_id, (pid, fd, start_time, cmd) in processes.items():
-        status_msg += f"\n👤 {chat_id}: `{cmd[:30]}...` ({start_time})"
-    
     bot.send_message(cid, status_msg, parse_mode="Markdown")
 
 @bot.message_handler(commands=["sessions"])
 def sessions_cmd(m):
     cid = m.chat.id
     if not is_admin(cid):
+        bot.send_message(cid, "❌ Not authorized!")
         return
     
-    sessions_msg = "🔄 𝗔𝗖𝗧𝗜𝗩𝗘 𝗦𝗘𝗦𝗦𝗜𝗢𝗡𝗦\n"
-    for chat_id, last_active in active_sessions.items():
+    sessions_msg = "🔄 *ACTIVE SESSIONS*\n"
+    sess_dict = active_sessions.get(MAIN_ADMIN_ID, {})
+    for chat_id, last_active in sess_dict.items():
         elapsed = int(time.time() - last_active)
         sessions_msg += f"\n👤 {chat_id}: {elapsed}s ago"
     
@@ -216,10 +235,12 @@ def sessions_cmd(m):
 def stop_cmd(m):
     cid = m.chat.id
     if not is_admin(cid):
+        bot.send_message(cid, "❌ Not authorized!")
         return
     
-    if cid in processes:
-        pid, fd, start_time, cmd = processes[cid]
+    proc_dict = processes.get(MAIN_ADMIN_ID, {})
+    if cid in proc_dict:
+        pid, fd, _, _ = proc_dict[cid]
         try:
             os.kill(pid, signal.SIGTERM)
             time.sleep(0.5)
@@ -227,10 +248,9 @@ def stop_cmd(m):
         except:
             pass
         
-        if cid in processes:
-            del processes[cid]
-        if cid in input_wait:
-            del input_wait[cid]
+        proc_dict.pop(cid, None)
+        input_wait.get(MAIN_ADMIN_ID, {}).pop(cid, None)
+        active_sessions.get(MAIN_ADMIN_ID, {}).pop(cid, None)
         
         bot.send_message(cid, "✅ Process stopped successfully!")
     else:
@@ -240,38 +260,39 @@ def stop_cmd(m):
 def nano_cmd(m):
     cid = m.chat.id
     if not is_admin(cid):
+        bot.send_message(cid, "❌ Not authorized!")
         return
-    
-    text = m.text.strip()
-    if len(text.split()) < 2:
-        bot.send_message(cid, "Usage: /nano filename")
+
+    args = m.text.strip().split(maxsplit=1)
+    if len(args) < 2:
+        bot.send_message(cid, "Usage: /nano <filename>")
         return
-    
-    filename = text.split(' ', 1)[1]
+
+    filename = args[1].strip()
     path = os.path.join(BASE_DIR, filename)
-    
-    # Create file if it doesn't exist
+
+    # Agar file exist nahi karti to create karo
     if not os.path.exists(path):
-        try:
-            open(path, 'w').close()
-        except:
-            bot.send_message(cid, f"❌ Cannot create file: {filename}")
-            return
-    
-    # Create edit session
+        open(path, 'w').close()
+
     sid = str(uuid.uuid4())
-    edit_sessions[sid] = path
-    
-    # Create web interface URL
-    link = f"https://rocky-termux-com.onrender.com/edit/{sid}"
-    
-    # Send edit options
+    edit_sessions[sid] = {"file": path, "admin_id": cid}
+
+    RENDER_DOMAIN = os.environ.get("RENDER_DOMAIN", "tuitui_tui_termux_bot6.onrender.com")
+link = f"https://{RENDER_DOMAIN}/edit/{sid}?admin_id={cid}"
+
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("✏️𝗡𝗔𝗡𝗢 𝗘𝗗𝗜𝗧, url=link))
-    markup.add(types.InlineKeyboardButton("📄 𝗩𝗜𝗘𝗪 𝗖𝗢𝗡𝗧𝗘𝗡𝗧", callback_data=f"view_{filename}"))
-    
-    bot.send_message(cid, f"📝 𝗘𝗗𝗜𝗧 𝗙𝗜𝗟𝗘\n\n*File:* `{filename}`\n*Path:* `{path}`", 
-                     parse_mode="Markdown", reply_markup=markup)
+    markup.add(
+        types.InlineKeyboardButton("✏️ Edit in Browser", url=link),
+        types.InlineKeyboardButton("📄 View Content", callback_data=f"view_{filename}")
+    )
+
+    bot.send_message(
+        cid,
+        f"📝 *EDIT FILE*\n\n*File:* `{filename}`\n*Path:* `{path}`",
+        parse_mode="Markdown",
+        reply_markup=markup
+    )
 
 @bot.message_handler(func=lambda m: True)
 def shell(m):
@@ -283,51 +304,53 @@ def shell(m):
         return
     
     # Update session activity
-    active_sessions[cid] = time.time()
+    active_sessions.setdefault(MAIN_ADMIN_ID, {})[cid] = time.time()
     
     # Handle input response
-    if cid in input_wait:
-        fd = input_wait.pop(cid)
+    if cid in input_wait.get(MAIN_ADMIN_ID, {}):
+        fd = input_wait[MAIN_ADMIN_ID].pop(cid)
         os.write(fd, (text + "\n").encode())
         return
     
-    # Handle quick commands from buttons
-    if text == "📁 ls":
-        text = "ls -la"
-    elif text == "📂 pwd":
-        text = "pwd"
-    elif text == "💿 df -h":
-        text = "df -h"
-    elif text == "📊 top":
-        text = "top -b -n 1 | head -20"
-    elif text == "📜 ps aux":
-        text = "ps aux | head -15"
-    elif text == "🗑️ clear":
-        bot.send_message(cid, "🗑️ Chat cleared (bot-side)")
-        return
-    elif text == "🛑 stop":
-        stop_cmd(m)
-        return
-    elif text == "📝 nano":
-        bot.send_message(cid, "Usage: /nano filename")
-        return
-    elif text == "🔄 ping 8.8.8.8":
-        text = "ping -c 4 8.8.8.8"
-    elif text == "🌐 ifconfig":
-        text = "ifconfig || ip addr"
+    # Quick command mapping
+    quick_map = {
+        "📁 ls": "ls -la",
+        "📂 pwd": "pwd",
+        "💿 df -h": "df -h",
+        "📊 top": "top -b -n 1 | head -20",
+        "📜 ps aux": "ps aux | head -15",
+        "🗑️ clear": None,
+        "🛑 stop": None,
+        "📝 nano": None,
+        "🔄 ping 8.8.8.8": "ping -c 4 8.8.8.8",
+        "🌐 ifconfig": "ifconfig || ip addr"
+    }
     
-    # Stop any existing process for this chat
-    if cid in processes:
-        pid, fd, start_time, cmd = processes[cid]
+    if text in quick_map:
+        if text == "🗑️ clear":
+            bot.send_message(cid, "🗑️ Chat cleared (bot-side)")
+            return
+        elif text == "🛑 stop":
+            stop_cmd(m)
+            return
+        elif text == "📝 nano":
+            bot.send_message(cid, "Usage: /nano filename")
+            return
+        else:
+            text = quick_map[text]
+    
+    # Stop any existing process
+    proc_dict = processes.setdefault(MAIN_ADMIN_ID, {})
+    if cid in proc_dict:
+        pid, fd, _, _ = proc_dict[cid]
         try:
             os.kill(pid, signal.SIGTERM)
         except:
             pass
-        del processes[cid]
+        proc_dict.pop(cid, None)
     
-    # Run command
     bot.send_message(cid, f"```\n$ {text}\n```", parse_mode="Markdown")
-    run_cmd(text, cid)
+    run_cmd(text, MAIN_ADMIN_ID, cid)
 
 # ================= CALLBACK HANDLERS =================
 
@@ -339,42 +362,56 @@ def callback_handler(call):
         bot.answer_callback_query(call.id, "❌ Not authorized!")
         return
     
+    # Scoped dicts
+    proc_dict = processes.setdefault(MAIN_ADMIN_ID, {})
+    sess_dict = active_sessions.setdefault(MAIN_ADMIN_ID, {})
+    input_dict = input_wait.setdefault(MAIN_ADMIN_ID, {})
+
+    # ---------- STATUS ----------
     if call.data == "status":
         status_cmd(call.message)
         bot.answer_callback_query(call.id)
     
+    # ---------- STOP ALL ----------
     elif call.data == "stop_all":
         if str(cid) != str(MAIN_ADMIN_ID):
             bot.answer_callback_query(call.id, "❌ Main admin only!")
             return
         
         stopped = 0
-        for chat_id in list(processes.keys()):
+        for chat_id, (pid, fd, start_time, cmd) in list(proc_dict.items()):
             try:
-                pid, fd, start_time, cmd = processes[chat_id]
                 os.kill(pid, signal.SIGKILL)
                 stopped += 1
             except:
                 pass
         
-        processes.clear()
-        input_wait.clear()
+        proc_dict.clear()
+        input_dict.clear()
+        sess_dict.clear()
+        
         bot.answer_callback_query(call.id, f"✅ Stopped {stopped} processes")
         bot.send_message(cid, f"🛑 Stopped all {stopped} processes")
     
+    # ---------- ADMIN LIST ----------
     elif call.data == "admin_list":
-        admin_list = "\n".join([f"👤 {admin}" for admin in admins])
+        admin_list_text = "\n".join([f"👤 {a}" for a in sorted(admins)])
         bot.answer_callback_query(call.id)
-        bot.send_message(cid, f"*ADMIN LIST:*\n{admin_list}", parse_mode="Markdown")
+        bot.send_message(cid, f"*ADMIN LIST:*\n{admin_list_text}", parse_mode="Markdown")
     
+    # ---------- ADD ADMIN ----------
     elif call.data == "add_admin":
         msg = bot.send_message(cid, "Send the user ID to add as admin:")
         bot.register_next_step_handler(msg, add_admin_step)
+        bot.answer_callback_query(call.id)
     
+    # ---------- REMOVE ADMIN ----------
     elif call.data == "remove_admin":
         msg = bot.send_message(cid, "Send the user ID to remove from admins:")
         bot.register_next_step_handler(msg, remove_admin_step)
+        bot.answer_callback_query(call.id)
     
+    # ---------- LIST FILES ----------
     elif call.data == "list_files":
         try:
             files = os.listdir(BASE_DIR)
@@ -386,32 +423,32 @@ def callback_handler(call):
         except Exception as e:
             bot.answer_callback_query(call.id, f"❌ Error: {e}")
     
+    # ---------- CLEAN LOGS ----------
     elif call.data == "clean_logs":
-        # Clean old sessions
         current_time = time.time()
-        old_sessions = [sid for sid, last_active in list(active_sessions.items()) 
-                       if current_time - last_active > 3600]
-        for sid in old_sessions:
-            active_sessions.pop(sid, None)
-        
+        old_sessions = [chat for chat, last_active in list(sess_dict.items()) if current_time - last_active > 3600]
+        for chat in old_sessions:
+            sess_dict.pop(chat, None)
         bot.answer_callback_query(call.id, "✅ Cleaned old sessions")
     
+    # ---------- VIEW FILE CONTENT ----------
     elif call.data.startswith("view_"):
         filename = call.data[5:]
         path = os.path.join(BASE_DIR, filename)
         try:
-            with open(path, 'r') as f:
+            with open(path, 'r', encoding='utf-8') as f:
                 content = f.read(1000)
             bot.send_message(cid, f"```\n{content}\n```", parse_mode="Markdown")
             bot.answer_callback_query(call.id)
-        except:
-            bot.answer_callback_query(call.id, "❌ Cannot read file")
+        except Exception as e:
+            bot.answer_callback_query(call.id, f"❌ Cannot read file: {e}")
+
+# ---------- ADD / REMOVE ADMIN STEPS ----------
 
 def add_admin_step(m):
     cid = m.chat.id
     if str(cid) != str(MAIN_ADMIN_ID):
         return
-    
     try:
         new_admin = int(m.text.strip())
         admins.add(new_admin)
@@ -424,7 +461,6 @@ def remove_admin_step(m):
     cid = m.chat.id
     if str(cid) != str(MAIN_ADMIN_ID):
         return
-    
     try:
         admin_id = int(m.text.strip())
         if admin_id != MAIN_ADMIN_ID and admin_id in admins:
@@ -436,10 +472,35 @@ def remove_admin_step(m):
     except:
         bot.send_message(cid, "❌ Invalid user ID")
 
+def remove_admin_step(m):
+    cid = m.chat.id
+    if str(cid) != str(MAIN_ADMIN_ID):
+        return  # Only main admin can remove others
+    
+    try:
+        admin_id = int(m.text.strip())
+    except ValueError:
+        bot.send_message(cid, "❌ Invalid user ID. Please send numeric ID only.")
+        return
+
+    if admin_id == MAIN_ADMIN_ID:
+        bot.send_message(cid, "❌ Cannot remove the main admin.")
+        return
+
+    if admin_id in admins:
+        admins.remove(admin_id)
+        save_data()
+        bot.send_message(cid, f"✅ Removed admin: {admin_id}")
+    else:
+        bot.send_message(cid, f"❌ Admin ID {admin_id} not found in the list.")
+
+# ================= ENHANCED EDITOR =================
+
 # ================= ENHANCED EDITOR =================
 
 @app.route("/edit/<sid>", methods=["GET", "POST"])
 def edit(sid):
+    # Check if session exists
     if sid not in edit_sessions:
         return """
         <html>
@@ -448,17 +509,42 @@ def edit(sid):
         </body>
         </html>
         """
-    
-    file = edit_sessions[sid]
-    
+
+    session_data = edit_sessions[sid]
+    file = session_data.get("file")
+    admin_id = session_data.get("admin_id")
+
+    # Ensure only the assigned admin can access
+    current_user_id = request.args.get("admin_id")
+    if str(current_user_id) != str(admin_id):
+        return """
+        <html>
+        <body style="background:#111;color:#f00;padding:20px;">
+        <h2>❌ Unauthorized access</h2>
+        </body>
+        </html>
+        """
+
+    # Security: Ensure file is inside BASE_DIR
+    abs_path = os.path.abspath(file)
+    if not abs_path.startswith(os.path.abspath(BASE_DIR)):
+        return """
+        <html>
+        <body style="background:#111;color:#f00;padding:20px;">
+        <h2>❌ Unauthorized file access</h2>
+        </body>
+        </html>
+        """
+
     if request.method == "POST":
         try:
-            with open(file, "w", encoding='utf-8') as f:
-                f.write(request.form["code"])
-            
+            code_content = request.form.get("code", "")
+            with open(abs_path, "w", encoding='utf-8') as f:
+                f.write(code_content)
+
             # Remove session after save
             edit_sessions.pop(sid, None)
-            
+
             return """
             <html>
             <body style="background:#111;color:#0f0;padding:20px;text-align:center;">
@@ -475,13 +561,15 @@ def edit(sid):
             </body>
             </html>
             """
-    
+
+    # GET request: load file content
     try:
-        with open(file, "r", encoding='utf-8') as f:
+        with open(abs_path, "r", encoding='utf-8') as f:
             code = f.read()
-    except:
+    except Exception as e:
         code = ""
-    
+        print(f"⚠️ Error reading file {abs_path}: {e}")
+
     return render_template_string("""
 <!DOCTYPE html>
 <html lang="en">
@@ -750,7 +838,7 @@ def home():
             Server is listening for remote commands via Telegram encrypted tunnel.
         </p>
 
-        <a href="https://t.me/Reac4ron_bot_bot" class="btn-telegram">
+        <a href="https://t.me/Tuitui_tui_bot" class="btn-telegram">
             <i class="fab fa-telegram-plane"></i> OPEN TELEGRAM BOT
         </a>
     </div>
@@ -758,28 +846,24 @@ def home():
 </body>
 </html>
 """
-
 if __name__ == "__main__":
     print("🤖 Starting Termux Controller Pro...")
     print(f"👑 Main Admin: {MAIN_ADMIN_ID}")
     print(f"📁 Base Directory: {BASE_DIR}")
     
-    # Start Flask server
-    threading.Thread(
-        target=lambda: app.run(
-            host="0.0.0.0", 
-            port=PORT, 
-            debug=False, 
-            use_reloader=False
-        ), 
-        daemon=True
-    ).start()
+    # Start Flask server safely
+    def run_flask():
+        try:
+            app.run(host="0.0.0.0", port=PORT, debug=False, use_reloader=False)
+        except Exception as e:
+            print(f"⚠️ Flask server error: {e}")
     
-    # Start bot
-    try:
-        bot.infinity_polling(timeout=60, long_polling_timeout=60)
-    except Exception as e:
-        print(f"Bot error: {e}")
-        # Retry after 5 seconds
-        time.sleep(5)
-        bot.infinity_polling()
+    threading.Thread(target=run_flask, daemon=True).start()
+    
+    # Start bot with retry
+    while True:
+        try:
+            bot.infinity_polling(timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            print(f"⚠️ Bot error: {e}. Retrying in 5 seconds...")
+            time.sleep(5)
