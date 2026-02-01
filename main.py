@@ -137,24 +137,27 @@ def start(m):
         return
     
     welcome_msg = """
-🤖 *TERMUX CONTROLLER PRO* 🤖
+━━━━━━━━━━━━━━━━━━━━━━
+        𝗧𝗘𝗥𝗠𝗨𝗫  𝗕𝗢𝗧
+━━━━━━━━━━━━━━━━━━━━━━
 
-*Features:*
-• Execute shell commands
-• Nano editor with web interface
-• Process management
-• Admin management
-• File browser
-• Session monitoring
+📌 𝗙𝗲𝗮𝘁𝘂𝗿𝗲𝘀:
+• 🖥️ 𝗘𝘅𝗲𝗰𝘂𝘁𝗲 𝘀𝗵𝗲𝗹𝗹 𝗰𝗼𝗺𝗺𝗮𝗻𝗱𝘀
+• ✏️ 𝗡𝗮𝗻𝗼 𝗲𝗱𝗶𝘁𝗼𝗿 𝘄𝗶𝘁𝗵 𝘄𝗲𝗯 𝗶𝗻𝘁𝗲𝗿𝗳𝗮𝗰𝗲
+• ⚙️ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀 𝗺𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁
+• 👑 𝗔𝗱𝗺𝗶𝗻 𝗺𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁
+• 📂 𝗙𝗶𝗹𝗲 𝗯𝗿𝗼𝘄𝘀𝗲𝗿
+• 📊 𝗦𝗲𝘀𝘀𝗶𝗼𝗻 𝗺𝗼𝗻𝗶𝘁𝗼𝗿𝗶𝗻𝗴
 
-*Quick Commands:*
-/nano filename - Edit file
-/stop - Stop current process
-/status - Check system status
-/admin - Admin panel
-/sessions - Active sessions
+📌 𝗤𝘂𝗶𝗰𝗸 𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀:
+• /nano filename - 𝗘𝗱𝗶𝘁 𝗮 𝗳𝗶𝗹𝗲
+• /stop - 𝗦𝘁𝗼𝗽 𝗰𝘂𝗿𝗿𝗲𝗻𝘁 𝗽𝗿𝗼𝗰𝗲𝘀𝘀
+• /status - 𝗖𝗵𝗲𝗰𝗸 𝘀𝘆𝘀𝘁𝗲𝗺 𝘀𝘁𝗮𝘁𝘂𝘀
+• /admin - 𝗢𝗽𝗲𝗻 𝗮𝗱𝗺𝗶𝗻 𝗽𝗮𝗻𝗲𝗹
+• /sessions - 𝗩𝗶𝗲𝘄 𝗮𝗰𝘁𝗶𝘃𝗲 𝘀𝗲𝘀𝘀𝗶𝗼𝗻𝘀
 
-*Use buttons below or type commands directly!*
+💡 𝗧𝗶𝗽: 𝗨𝘀𝗲 𝗯𝘂𝘁𝘁𝗼𝗻𝘀 𝗯𝗲𝗹𝗼𝘄 𝗼𝗿 𝘁𝘆𝗽𝗲 𝗰𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗱𝗶𝗿𝗲𝗰𝘁𝗹𝘆!
+━━━━━━━━━━━━━━━━━━━━━━
 """
     bot.send_message(cid, welcome_msg, 
                      parse_mode="Markdown", 
@@ -165,10 +168,10 @@ def admin_panel(m):
     cid = m.chat.id
     
     if str(cid) != str(MAIN_ADMIN_ID):
-        bot.send_message(cid, "❌ Only main admin can access this panel.")
+        bot.send_message(cid, "𝗢𝗻𝗹𝘆 𝗠𝗮𝗶𝗻 𝗔𝗱𝗺𝗶𝗻 𝗰𝗮𝗻 𝗮𝗰𝗰𝗲𝘀𝘀 𝘁𝗵𝗶𝘀 𝗽𝗮𝗻𝗲𝗹🕵️‍♀️")
         return
     
-    bot.send_message(cid, "🔐 *ADMIN PANEL*", 
+    bot.send_message(cid, "🔐 𝗔𝗗𝗠𝗜𝗡 𝗣𝗔𝗡𝗘𝗟*", 
                      parse_mode="Markdown", 
                      reply_markup=admin_keyboard())
 
@@ -179,14 +182,16 @@ def status_cmd(m):
         return
     
     status_msg = f"""
-📊 *SYSTEM STATUS* 📊
+━━━━━━━━━━━━━━━━━━━━━━
+📊 𝗦𝗬𝗦𝗧𝗘𝗠 𝗦𝗧𝗔𝗧𝗨𝗦 📊
+━━━━━━━━━━━━━━━━━━━━━━
 
-*Active Processes:* {len(processes)}
-*Active Sessions:* {len(active_sessions)}
-*Admins:* {len(admins)}
-*Base Directory:* `{BASE_DIR}`
+• 𝗔𝗰𝘁𝗶𝘃𝗲 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗲𝘀: {len(processes)}
+• 𝗔𝗰𝘁𝗶𝘃𝗲 𝗦𝗲𝘀𝘀𝗶𝗼𝗻𝘀: {len(active_sessions)}
+• 𝗔𝗱𝗺𝗶𝗻𝘀: {len(admins)}
+• 𝗕𝗮𝘀𝗲 𝗗𝗶𝗿𝗲𝗰𝘁𝗼𝗿𝘆: `{BASE_DIR}`
 
-*Running Processes:*
+📌 𝗥𝘂𝗻𝗻𝗶𝗻𝗴 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗲𝘀:
 """
     
     for chat_id, (pid, fd, start_time, cmd) in processes.items():
@@ -200,7 +205,7 @@ def sessions_cmd(m):
     if not is_admin(cid):
         return
     
-    sessions_msg = "🔄 *ACTIVE SESSIONS*\n"
+    sessions_msg = "🔄 𝗔𝗖𝗧𝗜𝗩𝗘 𝗦𝗘𝗦𝗦𝗜𝗢𝗡𝗦\n"
     for chat_id, last_active in active_sessions.items():
         elapsed = int(time.time() - last_active)
         sessions_msg += f"\n👤 {chat_id}: {elapsed}s ago"
@@ -262,10 +267,10 @@ def nano_cmd(m):
     
     # Send edit options
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("✏️ Edit in Browser", url=link))
-    markup.add(types.InlineKeyboardButton("📄 View Content", callback_data=f"view_{filename}"))
+    markup.add(types.InlineKeyboardButton("✏️𝗡𝗔𝗡𝗢 𝗘𝗗𝗜𝗧, url=link))
+    markup.add(types.InlineKeyboardButton("📄 𝗩𝗜𝗘𝗪 𝗖𝗢𝗡𝗧𝗘𝗡𝗧", callback_data=f"view_{filename}"))
     
-    bot.send_message(cid, f"📝 *EDIT FILE*\n\n*File:* `{filename}`\n*Path:* `{path}`", 
+    bot.send_message(cid, f"📝 𝗘𝗗𝗜𝗧 𝗙𝗜𝗟𝗘\n\n*File:* `{filename}`\n*Path:* `{path}`", 
                      parse_mode="Markdown", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: True)
@@ -478,99 +483,281 @@ def edit(sid):
         code = ""
     
     return render_template_string("""
-    <html>
-    <head>
-        <title>File Editor</title>
-        <style>
-            * { margin:0; padding:0; box-sizing:border-box; }
-            body { 
-                background: #0a0a0a; 
-                color: #00ff00; 
-                font-family: 'Courier New', monospace;
-            }
-            .header {
-                background: #001a00;
-                padding: 15px;
-                border-bottom: 2px solid #00ff00;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .filename {
-                font-size: 18px;
-                font-weight: bold;
-            }
-            .container {
-                padding: 20px;
-            }
-            textarea {
-                width: 100%;
-                height: 80vh;
-                background: #000;
-                color: #00ff00;
-                border: 1px solid #008800;
-                padding: 10px;
-                font-family: 'Courier New', monospace;
-                font-size: 14px;
-                resize: vertical;
-                border-radius: 5px;
-            }
-            button {
-                background: #008800;
-                color: white;
-                border: none;
-                padding: 10px 30px;
-                margin-top: 10px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 16px;
-                transition: 0.3s;
-            }
-            button:hover {
-                background: #00aa00;
-                transform: scale(1.05);
-            }
-            .info {
-                background: #001100;
-                padding: 10px;
-                border-radius: 5px;
-                margin-bottom: 10px;
-                border-left: 3px solid #00ff00;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <div class="filename">📝 Editing: {{ file.split('/')[-1] }}</div>
-            <div style="color:#aaa">Termux Controller Pro</div>
-        </div>
-        <div class="container">
-            <div class="info">
-                File: {{ file }}<br>
-                Size: {{ code|length }} characters
-            </div>
-            <form method="post">
-                <textarea name="code" placeholder="Start typing your code here...">{{ code }}</textarea>
-                <button type="submit">💾 SAVE CHANGES</button>
-            </form>
-        </div>
-    </body>
-    </html>
-    """, code=code, file=file)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro IDE | {{ file.split('/')[-1] }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/ace.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --accent: #58a6ff;
+            --card-bg: #161b22;
+            --border: #30363d;
+        }
+
+        body { 
+            margin: 0; background: var(--bg-dark); 
+            color: #c9d1d9; font-family: 'Segoe UI', sans-serif; 
+        }
+
+        .header {
+            background: var(--card-bg);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .file-info {
+            font-size: 14px;
+            padding: 8px 15px;
+            background: #0d1117;
+            border-radius: 6px;
+            color: var(--accent);
+            border: 1px solid var(--border);
+        }
+
+        /* Editor container must have height */
+        #editor {
+            width: 100%;
+            height: calc(100vh - 140px);
+            font-size: 16px;
+        }
+
+        .footer {
+            padding: 15px 20px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-save {
+            background: #238636;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-save:hover { background: #2ea043; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div style="font-weight: bold; color: white;">
+        <i class="fas fa-code" style="color:var(--accent)"></i> Nano Termux 
+    </div>
+    <div class="file-info">
+        <i class="far fa-file"></i> {{ file }}
+    </div>
+</div>
+
+<div id="editor">{{ code }}</div>
+
+<form id="saveForm" method="post">
+    <input type="hidden" name="code" id="hiddenCode">
+    <div class="footer">
+        <button type="button" onclick="saveData()" class="btn-save">
+            <i class="fas fa-cloud-upload-alt"></i> SAVE CHANGES
+        </button>
+    </div>
+</form>
+
+<script>
+    // Ace Editor Setup
+    var editor = ace.edit("editor");
+    editor.setTheme("ace/theme/one_dark"); // Premium Dark Theme
+    
+    // File Extension ke hisaab se mode set karna
+    var filename = "{{ file }}";
+    var ext = filename.split('.').pop().toLowerCase();
+    
+    if(ext === 'py') editor.session.setMode("ace/mode/python");
+    else if(ext === 'js') editor.session.setMode("ace/mode/javascript");
+    else if(ext === 'php') editor.session.setMode("ace/mode/php");
+    else if(ext === 'html') editor.session.setMode("ace/mode/html");
+    else if(ext === 'css') editor.session.setMode("ace/mode/css");
+    else editor.session.setMode("ace/mode/text");
+
+    // Editor Options
+    editor.setOptions({
+        enableBasicAutocompletion: true,
+        enableLiveAutocompletion: true,
+        showPrintMargin: false,
+        useSoftTabs: true,
+        tabSize: 4
+    });
+
+    // Save Function
+    function saveData() {
+        document.getElementById('hiddenCode').value = editor.getValue();
+        document.getElementById('saveForm').submit();
+    }
+</script>
+
+</body>
+</html>
+""", code=code, file=file)
 
 # ================= START SERVER =================
 
 @app.route('/')
 def home():
     return """
-    <html>
-    <body style="background:#111;color:#0f0;text-align:center;padding:50px;">
-    <h1>🤖 Termux Controller Pro</h1>
-    <p>Server is running...</p>
-    <p style="color:#888">Use Telegram bot to access features</p>
-    </body>
-    </html>
-    """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termux Pro | Active</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            background: #050505; 
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+
+        /* Ambient Glow Background */
+        .glow-bg {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
+            z-index: 1;
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+
+        /* Central Bot Animation */
+        .bot-wrapper {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 50%;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
+        }
+
+        .bot-icon {
+            font-size: 70px;
+            color: #00d4ff;
+            filter: drop-shadow(0 0 15px #00d4ff);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+        }
+
+        /* Pulsing Rings */
+        .ring {
+            position: absolute;
+            border: 2px solid #00d4ff;
+            border-radius: 50%;
+            opacity: 0;
+            animation: pulse-ring 3s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { width: 150px; height: 150px; opacity: 0.5; }
+            100% { width: 300px; height: 300px; opacity: 0; }
+        }
+
+        h1 {
+            color: white;
+            font-size: 28px;
+            font-weight: 300;
+            letter-spacing: 5px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .status-text {
+            color: #00d4ff;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            opacity: 0.8;
+        }
+
+        .btn-telegram {
+            margin-top: 40px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: transparent;
+            color: white;
+            border: 1px solid #00d4ff;
+            padding: 12px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.4s;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .btn-telegram:hover {
+            background: #00d4ff;
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glow-bg"></div>
+    
+    <div class="container">
+        <div class="bot-wrapper">
+            <div class="ring"></div>
+            <div class="ring" style="animation-delay: 1s;"></div>
+            <i class="fas fa-robot bot-icon"></i>
+        </div>
+
+        <h1>TERMUX PRO</h1>
+        <div class="status-text">SYSTEM ACTIVE • 100%</div>
+
+        <p style="color: #666; margin-top: 20px; font-size: 13px; max-width: 300px; margin-left: auto; margin-right: auto;">
+            Server is listening for remote commands via Telegram encrypted tunnel.
+        </p>
+
+        <a href="https://t.me/Reac4ron_bot_bot" class="btn-telegram">
+            <i class="fab fa-telegram-plane"></i> OPEN TELEGRAM BOT
+        </a>
+    </div>
+
+</body>
+</html>
+"""
 
 if __name__ == "__main__":
     print("🤖 Starting Termux Controller Pro...")
